@@ -1,0 +1,79 @@
+{
+  "fullName": "João Mendes de Almeida",
+  "location": "Lisbon, Portugal",
+  "phone": "+351 961 227 777",
+  "email": "joao.mendes.almeida17@gmail.com",
+  "github": "https://github.com/Jocca25",
+  "linkedin": "https://www.linkedin.com/in/joao-mendes-de-almeida",
+  "ageYears": null,
+  "ageNote": "Age is not stated on the CV PDF. Set ageYears here if the candidate wants age used in scoring.",
+  "education": [
+    {
+      "school": "IADE",
+      "degree": "Bachelor's Degree in Business Informatics",
+      "location": "Lisbon, Portugal",
+      "period": "2023–2026",
+      "gpa": "14/20",
+      "areas": [
+        "Business Intelligence",
+        "Databases",
+        "Programming",
+        "Web Development",
+        "Information Systems"
+      ]
+    }
+  ],
+  "experience": [
+    {
+      "title": "IT Intern",
+      "company": "Sonant AI",
+      "location": "Lisbon, Portugal",
+      "period": "July 2026",
+      "highlights": [
+        "Internal tools and workflows in a startup",
+        "Metabase for data analysis and reporting",
+        "AI instructions and prompts for a calling agent",
+        "Investigated technical issues with the development team"
+      ]
+    },
+    {
+      "title": "Trip Guide",
+      "company": "Sumol Snow Trip",
+      "location": "Andorra",
+      "period": "April 2026",
+      "highlights": ["Supervised graduating students on a ski trip"]
+    },
+    {
+      "title": "Delivery Assistant",
+      "company": "Sushi Dão",
+      "location": "Lisbon, Portugal",
+      "period": "2025–2026",
+      "highlights": ["Coordinated takeaway orders and deliveries"]
+    },
+    {
+      "title": "Bartender / Barback",
+      "company": "Ás de Copos",
+      "location": "Lisbon, Portugal",
+      "period": "2023–2025",
+      "highlights": ["Bar operations at weddings, private events, Santos Populares"]
+    }
+  ],
+  "skills": {
+    "dataBi": ["Power BI", "Metabase"],
+    "programming": ["Python", "SQL", "JavaScript", "PHP"],
+    "webTools": ["HTML", "CSS", "Firebase", "GitHub", "Xcode", "Tkinter"],
+    "languages": [
+      { "name": "Portuguese", "level": "Native" },
+      { "name": "English", "level": "Fluent" },
+      { "name": "Spanish", "level": "Intermediate" }
+    ]
+  },
+  "projects": [
+    "iOS app (Xcode, Firebase, Apple Maps, GitHub)",
+    "Business Intelligence dashboard (Power BI)",
+    "Web apps (HTML, CSS, PHP, Firebase)",
+    "Database & Python GUI apps (SQL, Python, Tkinter)"
+  ],
+  "pdfFile": "Joao_Mendes_de_Almeida_CV.pdf",
+  "pdfRelativePath": "data/Joao_Mendes_de_Almeida_CV.pdf"
+}
