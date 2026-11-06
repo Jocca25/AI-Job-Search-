@@ -1,10 +1,14 @@
 import { defineTool } from "@grok/agent-sdk/tools";
 import * as z from "zod/v4";
-import { readQueue, writeQueue } from "../lib/queue.js";
+import {
+  appendActivity,
+  readPlatformStore,
+  writePlatformStore,
+} from "../lib/store.js";
 
 export default defineTool({
   description:
-    "Gate for real application submit. Refuses unless the job is approved (or prepared after approve) in ctx.host.kv and confirmSubmit=true. Returns browser/automation guidance; does not scrape credentials.",
+    "Gate for real application submit. Refuses unless the job is approved/prepared and confirmSubmit=true. Returns browser guidance only — never auto-sends.",
   execution: "server",
   effect: "write",
   needsApproval: true,
@@ -32,8 +36,8 @@ export default defineTool({
       };
     }
 
-    const state = await readQueue(ctx.host.kv, ctx.session.id);
-    const item = state.items[jobId];
+    let store = await readPlatformStore(ctx.host.kv);
+    const item = store.queue.items[jobId];
     if (!item) {
       return {
         ok: false,
@@ -50,7 +54,7 @@ export default defineTool({
         submitted: false,
         status: item.status,
         message:
-          "Bloqueado: a vaga não está approved/prepared em ctx.host.kv. Use approval_queue para aprovar primeiro.",
+          "Bloqueado: a vaga não está approved/prepared. Use approval_queue ou o dashboard para aprovar primeiro.",
       };
     }
 
@@ -74,16 +78,25 @@ export default defineTool({
       cvPdfRelativePath: item.preparedPayload.cvPdfRelativePath,
       coverLetterDraft: item.preparedPayload.coverLetterDraft,
       safety:
-        "O agente não envia automaticamente para portais. Use estes passos no browser só com o OK humano já registado na fila.",
+        "O agente não envia automaticamente para portais. Use estes passos no browser só com o OK humano já registado.",
     };
 
-    state.items[jobId] = {
+    store.queue.items[jobId] = {
       ...item,
       status: "submitted",
+      leadStatus: "applied",
+      appliedAt: new Date().toISOString(),
       decidedAt: item.decidedAt ?? new Date().toISOString(),
       submitResult,
     };
-    await writeQueue(ctx.host.kv, ctx.session.id, state);
+
+    store = appendActivity(store, {
+      level: "success",
+      category: "submit",
+      message: `Candidatura marcada como submetida (orientação manual): ${item.job.title}`,
+      jobId,
+    });
+    store = await writePlatformStore(store, ctx.host.kv);
 
     return {
       ok: true,

@@ -1,10 +1,15 @@
 import { defineTool } from "@grok/agent-sdk/tools";
 import * as z from "zod/v4";
-import { listItems, readQueue, writeQueue } from "../lib/queue.js";
+import { listItems } from "../lib/queue.js";
+import {
+  appendActivity,
+  readPlatformStore,
+  writePlatformStore,
+} from "../lib/store.js";
 
 export default defineTool({
   description:
-    "Manage the human approval queue: list, enqueue metadata refresh, approve, or reject. Submits are blocked until status is approved.",
+    "Manage the human approval queue: list, approve, or reject. Submits are blocked until status is approved. Prefer manage_leads for tracker stages in the dashboard.",
   execution: "server",
   effect: (input) => (input.action === "list" ? "read" : "write"),
   inputSchema: z.object({
@@ -20,16 +25,16 @@ export default defineTool({
     dryRun: true,
   }),
   async execute({ action, jobId, statusFilter }, ctx) {
-    const state = await readQueue(ctx.host.kv, ctx.session.id);
+    let store = await readPlatformStore(ctx.host.kv);
 
     if (action === "list") {
-      const items = listItems(state, statusFilter);
+      const items = listItems(store.queue, statusFilter);
       return {
         action,
         count: items.length,
         items,
         reminder:
-          "Mostre a fila no playground. Só depois de approve é permitido prepare_application / submit_application.",
+          "Mostre a fila no dashboard (ou Dev console). Só depois de approve é permitido prepare_application / submit_application.",
       };
     }
 
@@ -41,7 +46,7 @@ export default defineTool({
       };
     }
 
-    const item = state.items[jobId];
+    const item = store.queue.items[jobId];
     if (!item) {
       return {
         ok: false,
@@ -60,17 +65,33 @@ export default defineTool({
     }
 
     const nextStatus = action === "approve" ? "approved" : "rejected";
-    state.items[jobId] = {
+    store.queue.items[jobId] = {
       ...item,
       status: nextStatus,
+      leadStatus:
+        nextStatus === "approved"
+          ? item.leadStatus === "new" || item.leadStatus === "saved"
+            ? "to_apply"
+            : item.leadStatus
+          : "dismissed",
       decidedAt: new Date().toISOString(),
     };
-    await writeQueue(ctx.host.kv, ctx.session.id, state);
+
+    store = appendActivity(store, {
+      level: nextStatus === "approved" ? "success" : "warning",
+      category: "approval",
+      message:
+        nextStatus === "approved"
+          ? `Aprovado para preparação: ${item.job.title}`
+          : `Rejeitado/dismissed: ${item.job.title}`,
+      jobId,
+    });
+    store = await writePlatformStore(store, ctx.host.kv);
 
     return {
       ok: true,
       action,
-      item: state.items[jobId],
+      item: store.queue.items[jobId],
       nextStep:
         nextStatus === "approved"
           ? "Chame prepare_application e só depois submit_application."

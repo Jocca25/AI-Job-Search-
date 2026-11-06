@@ -7,10 +7,11 @@
   "linkedin": "https://www.linkedin.com/in/joao-mendes-de-almeida",
   "ageYears": null,
   "ageNote": "Age is not stated on the CV PDF. Set ageYears here if the candidate wants age used in scoring.",
+  "summary": "Licenciado em Informática de Gestão (IADE) com experiência prática em AI agents, análise de dados (Metabase/SQL), prompts, workflows e melhoria de processos numa startup. Procura estágios, traineeships, programas graduate e posições junior em AI, dados/BI, automação e papéis tech+negócio.",
   "education": [
     {
       "school": "IADE",
-      "degree": "Bachelor's Degree in Business Informatics",
+      "degree": "Bachelor's Degree in Business Informatics (Informática de Gestão)",
       "location": "Lisbon, Portugal",
       "period": "2023–2026",
       "gpa": "14/20",
@@ -19,7 +20,8 @@
         "Databases",
         "Programming",
         "Web Development",
-        "Information Systems"
+        "Information Systems",
+        "Data Analysis"
       ]
     }
   ],
@@ -30,10 +32,11 @@
       "location": "Lisbon, Portugal",
       "period": "July 2026",
       "highlights": [
-        "Internal tools and workflows in a startup",
-        "Metabase for data analysis and reporting",
-        "AI instructions and prompts for a calling agent",
-        "Investigated technical issues with the development team"
+        "Startup building AI voice agents for insurance companies",
+        "Analysed data with Metabase and SQL",
+        "Worked with AI agents, prompts, workflows and testing",
+        "Identified problems in AI agent calls and proposed improvements",
+        "Supported workflow improvements with data-driven insights"
       ]
     },
     {
@@ -59,9 +62,15 @@
     }
   ],
   "skills": {
-    "dataBi": ["Power BI", "Metabase"],
+    "dataBi": ["SQL", "Python", "Power BI", "Metabase", "Data Analysis", "Business Intelligence"],
     "programming": ["Python", "SQL", "JavaScript", "PHP"],
     "webTools": ["HTML", "CSS", "Firebase", "GitHub", "Xcode", "Tkinter"],
+    "aiAutomation": [
+      "AI Agents",
+      "Prompt Engineering",
+      "Workflow Automation",
+      "Information Systems"
+    ],
     "languages": [
       { "name": "Portuguese", "level": "Native" },
       { "name": "English", "level": "Fluent" },
@@ -74,6 +83,57 @@
     "Web apps (HTML, CSS, PHP, Firebase)",
     "Database & Python GUI apps (SQL, Python, Tkinter)"
   ],
+  "preferences": {
+    "interests": [
+      "Artificial Intelligence",
+      "Data & Business Intelligence",
+      "AI Automation",
+      "IT Consulting",
+      "Business Analysis",
+      "Product Management",
+      "Technology and business-oriented roles"
+    ],
+    "preferredLocations": [
+      "Lisboa",
+      "Lisbon",
+      "Oeiras",
+      "Cascais",
+      "Amadora",
+      "Sintra",
+      "Grande Lisboa"
+    ],
+    "openToPortugalElsewhere": true,
+    "workArrangements": ["hybrid", "onsite", "remote"],
+    "jobTypes": ["internship", "traineeship", "graduate", "junior", "full_time"],
+    "seniorityLevels": ["internship", "entry", "junior"],
+    "targetKeywords": [
+      "estágio",
+      "internship",
+      "trainee",
+      "graduate",
+      "junior",
+      "AI",
+      "data",
+      "business intelligence",
+      "automation",
+      "analista"
+    ],
+    "avoidKeywords": [
+      "senior",
+      "sénior",
+      "5+ years",
+      "diretor",
+      "director",
+      "principal engineer"
+    ]
+  },
+  "scoringWeights": {
+    "overallProfile": 0.3,
+    "technicalSkills": 0.25,
+    "experienceSeniority": 0.2,
+    "careerInterests": 0.15,
+    "locationArrangement": 0.1
+  },
   "pdfFile": "Joao_Mendes_de_Almeida_CV.pdf",
   "pdfRelativePath": "data/Joao_Mendes_de_Almeida_CV.pdf"
 }

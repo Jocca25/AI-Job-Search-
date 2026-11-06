@@ -2,10 +2,12 @@
   "name": "job-search",
   "private": true,
   "type": "module",
-  "description": "PT job search agent: score fit, approval queue, CV-based applications",
+  "description": "PT AI job search platform: durable leads, explainable scoring, dashboard + Agent SDK worker",
   "scripts": {
-    "check": "tsc --noEmit",
-    "dev": "agent-sdk dev"
+    "check": "tsc --noEmit && npm run check --prefix web",
+    "dev": "agent-sdk dev",
+    "dev:dashboard": "npm run dev --prefix web",
+    "test:scoring": "tsx scripts/test-scoring.ts"
   },
   "dependencies": {
     "@grok/agent-sdk": "^0.6.0",
@@ -13,6 +15,7 @@
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
+    "tsx": "^4.19.4",
     "typescript": "6.0.3"
   }
 }

@@ -1,3 +1,35 @@
+export type WorkArrangement = "remote" | "hybrid" | "onsite" | "unknown";
+export type EmploymentType =
+  | "internship"
+  | "traineeship"
+  | "graduate"
+  | "junior"
+  | "full_time"
+  | "part_time"
+  | "contract"
+  | "unknown";
+
+export type SeniorityLevel =
+  | "internship"
+  | "entry"
+  | "junior"
+  | "mid"
+  | "senior"
+  | "lead"
+  | "unknown";
+
+export type LeadStatus =
+  | "new"
+  | "saved"
+  | "to_apply"
+  | "applied"
+  | "interview"
+  | "rejected"
+  | "offer"
+  | "dismissed";
+
+export type AiRecommendation = "apply" | "consider" | "skip";
+
 export type JobListing = {
   id: string;
   title: string;
@@ -9,13 +41,45 @@ export type JobListing = {
   applicantCount?: number | null;
   postedAt?: string | null;
   rawNotes?: string | null;
+  salary?: string | null;
+  deadline?: string | null;
+  workArrangement?: WorkArrangement;
+  employmentType?: EmploymentType;
+  seniority?: SeniorityLevel;
+  category?: string | null;
+  companyOverview?: string | null;
+  mandatoryRequirements?: string[];
+  preferredQualifications?: string[];
+  active?: boolean | null;
+  urlVerified?: boolean | null;
+};
+
+export type MatchDimensionScore = {
+  id: string;
+  label: string;
+  weight: number;
+  score: number;
+  weighted: number;
+  notes: string[];
 };
 
 export type FitBreakdown = {
+  /** Legacy 0–10 fields kept for older queue items / evals. */
   experienceMatch: number;
   ageFit: number | null;
   applicantCompetition: number | null;
   notes: string[];
+  /** Explainable 0–100 system */
+  score100: number;
+  dimensions: MatchDimensionScore[];
+  strengths: string[];
+  weaknesses: string[];
+  missingMandatory: string[];
+  missingPreferred: string[];
+  matchingSkills: string[];
+  concerns: string[];
+  recommendation: AiRecommendation;
+  whyMatches: string;
 };
 
 export type ApprovalStatus =
@@ -32,6 +96,9 @@ export type ApplicationPayload = {
   candidateEmail: string;
   candidatePhone: string;
   coverLetterDraft: string;
+  adaptedCvNotes: string;
+  applicationEmailDraft: string;
+  questionAnswers: { question: string; answer: string }[];
   cvPdfRelativePath: string;
   formFields: { [key: string]: string };
   browserSteps: string[];
@@ -54,10 +121,15 @@ export type ApprovalItem = {
   jobId: string;
   job: JobListing;
   score?: number;
+  score100?: number;
   breakdown?: FitBreakdown;
   status: ApprovalStatus;
+  leadStatus: LeadStatus;
   queuedAt: string;
+  discoveredAt: string;
   decidedAt?: string;
+  appliedAt?: string | null;
+  notes?: string | null;
   preparedPayload?: ApplicationPayload;
   submitResult?: SubmitResult;
 };
@@ -89,6 +161,25 @@ export type LanguageEntry = {
   level: string;
 };
 
+export type CareerPreferences = {
+  interests: string[];
+  preferredLocations: string[];
+  openToPortugalElsewhere: boolean;
+  workArrangements: WorkArrangement[];
+  jobTypes: EmploymentType[];
+  seniorityLevels: SeniorityLevel[];
+  targetKeywords: string[];
+  avoidKeywords: string[];
+};
+
+export type ScoringWeights = {
+  overallProfile: number;
+  technicalSkills: number;
+  experienceSeniority: number;
+  careerInterests: number;
+  locationArrangement: number;
+};
+
 export type CvProfile = {
   fullName: string;
   location: string;
@@ -98,15 +189,63 @@ export type CvProfile = {
   linkedin?: string;
   ageYears: number | null;
   ageNote?: string;
+  summary?: string;
   education: EducationEntry[];
   experience: ExperienceEntry[];
   skills: {
     dataBi?: string[];
     programming?: string[];
     webTools?: string[];
+    aiAutomation?: string[];
     languages?: LanguageEntry[];
   };
   projects?: string[];
+  preferences: CareerPreferences;
+  scoringWeights: ScoringWeights;
   pdfFile: string;
   pdfRelativePath: string;
+};
+
+export type ActivityLevel = "info" | "success" | "warning" | "error";
+
+export type ActivityEvent = {
+  id: string;
+  at: string;
+  level: ActivityLevel;
+  category: string;
+  message: string;
+  details?: string | null;
+  jobId?: string | null;
+};
+
+export type AgentRunStatus = "idle" | "running" | "paused" | "error";
+
+export type AgentStatusState = {
+  status: AgentRunStatus;
+  lastExecutionAt: string | null;
+  lastStartedAt: string | null;
+  jobsProcessed: number;
+  lastError: string | null;
+  currentAction: string | null;
+  searchQuery: string | null;
+  searchLocation: string | null;
+  enabledSources: string[];
+};
+
+export type SearchConfig = {
+  defaultQuery: string;
+  defaultLocation: string;
+  enabledSources: string[];
+  minScoreToKeep: number;
+  maxResultsPerRun: number;
+  autoDismissSenior: boolean;
+};
+
+export type PlatformStore = {
+  version: 1;
+  updatedAt: string;
+  queue: ApprovalQueueState;
+  activity: ActivityEvent[];
+  agent: AgentStatusState;
+  searchConfig: SearchConfig;
 };

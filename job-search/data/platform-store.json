@@ -1,0 +1,44 @@
+{
+  "version": 1,
+  "updatedAt": "1970-01-01T00:00:00.000Z",
+  "queue": {
+    "items": {},
+    "updatedAt": "1970-01-01T00:00:00.000Z"
+  },
+  "activity": [],
+  "agent": {
+    "status": "idle",
+    "lastExecutionAt": null,
+    "lastStartedAt": null,
+    "jobsProcessed": 0,
+    "lastError": null,
+    "currentAction": null,
+    "searchQuery": null,
+    "searchLocation": null,
+    "enabledSources": [
+      "indeed_pt",
+      "sapo_emprego",
+      "net_empregos",
+      "linkedin_jobs",
+      "randstad_pt",
+      "portal_emprego",
+      "okempregos"
+    ]
+  },
+  "searchConfig": {
+    "defaultQuery": "estágio OR junior OR trainee AI OR \"business intelligence\" OR \"data analyst\" OR \"AI agent\"",
+    "defaultLocation": "Lisboa",
+    "enabledSources": [
+      "indeed_pt",
+      "sapo_emprego",
+      "net_empregos",
+      "linkedin_jobs",
+      "randstad_pt",
+      "portal_emprego",
+      "okempregos"
+    ],
+    "minScoreToKeep": 45,
+    "maxResultsPerRun": 40,
+    "autoDismissSenior": true
+  }
+}

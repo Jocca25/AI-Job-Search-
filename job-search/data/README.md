@@ -1,19 +1,20 @@
-# CV data folder
+# Data folder
 
-Drop curriculum vitae PDF files in this folder.
-
-## Canonical CV for this project
+## CV
 
 - PDF: `Joao_Mendes_de_Almeida_CV.pdf`
-- Structured profile used by tools: `cv-profile.json`
+- Structured profile: `cv-profile.json` (skills, preferences, scoring weights)
 
 To switch candidates:
 
-1. Add the new PDF here (example: `Maria_Silva_CV.pdf`).
-2. Update `cv-profile.json` to match that person (name, contact, experience, skills).
-3. Set `ageYears` when age should count in the 0–10 fit score. Leave it `null` if unknown.
-4. Tell the agent which PDF / profile to use.
+1. Add the new PDF here.
+2. Update `cv-profile.json`.
+3. Recalculate scores from the dashboard (Profile → Guardar) or via the agent.
 
-The Project store also keeps a copy at:
+## Platform store
 
-`/cursor/stores/self/media/Joao_Mendes_de_Almeida_CV.pdf`
+- `platform-store.json` — durable leads, application tracker stages, agent activity and search config.
+- Written by agent tools and by the dashboard API (`web/server`).
+- When the Agent SDK runs hosted, the same payload is also kept in `host.kv` under `job-search:platform-store:v1`.
+
+Do not invent job listings here. Empty store = no leads yet; run the agent to ingest real openings.
