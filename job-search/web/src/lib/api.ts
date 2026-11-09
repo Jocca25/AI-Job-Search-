@@ -217,12 +217,24 @@ export const api = {
       activity: ActivityEvent[];
       sources: { id: string; name: string; homeUrl: string }[];
     }>("/api/activity"),
+  search: (body: { query: string; location?: string }) =>
+    request<{
+      ok: boolean;
+      query: string;
+      location: string;
+      ingested: number;
+      providers: string[];
+      errors: string[];
+      count: number;
+      items: LeadItem[];
+      agent: AgentStatus;
+    }>("/api/search", { method: "POST", body: JSON.stringify(body) }),
   agentControl: (body: {
     action: "start" | "pause" | "resume" | "set_config";
     config?: Partial<SearchConfig>;
     message?: string;
   }) =>
-    request<{ agent: AgentStatus; searchConfig: SearchConfig }>(
+    request<{ agent: AgentStatus; searchConfig: SearchConfig; ingested?: number }>(
       "/api/agent/control",
       { method: "POST", body: JSON.stringify(body) },
     ),

@@ -22,12 +22,10 @@ type Section =
   | "dev";
 
 const NAV: { id: Section; label: string }[] = [
-  { id: "dashboard", label: "Dashboard" },
-  { id: "leads", label: "Job Leads" },
+  { id: "dashboard", label: "Pesquisar" },
+  { id: "leads", label: "Resultados" },
   { id: "tracker", label: "Candidaturas" },
-  { id: "activity", label: "Actividade do agente" },
   { id: "profile", label: "O meu perfil" },
-  { id: "dev", label: "Dev console" },
 ];
 
 const TRACKER_COLS: { id: LeadStatus; label: string }[] = [
@@ -65,6 +63,10 @@ export default function App() {
     minScore: "",
     sort: "relevance",
   });
+  const [searchQuery, setSearchQuery] = useState("estágio junior data AI");
+  const [searchLocation, setSearchLocation] = useState("Lisboa");
+  const [searchHint, setSearchHint] = useState<string | null>(null);
+  const [searching, setSearching] = useState(false);
 
   const loadDashboard = useCallback(async () => {
     const data = await api.dashboard();
@@ -108,7 +110,7 @@ export default function App() {
     setLoading(true);
     setError(null);
     try {
-      if (section === "dashboard") await loadDashboard();
+      await loadDashboard();
       if (section === "leads") await loadLeads();
       if (section === "tracker") await loadTracker();
       if (section === "activity" || section === "dev") await loadActivity();
@@ -154,15 +156,48 @@ export default function App() {
     }
   };
 
+  const runSearch = async () => {
+    const q = searchQuery.trim();
+    if (!q) {
+      setError("Escreve o que queres procurar (ex.: estágio data Lisboa).");
+      return;
+    }
+    setSearching(true);
+    setBusy(true);
+    setError(null);
+    setSearchHint(null);
+    try {
+      const data = await api.search({ query: q, location: searchLocation.trim() || "Portugal" });
+      setAgent(data.agent);
+      setLeads(data.items);
+      setSearchHint(
+        data.ingested > 0
+          ? `Encontrámos ${data.ingested} vagas. Fontes: ${data.providers.join(", ") || "—"}.`
+          : "Não encontramos vagas com estes termos. Experimenta outras palavras (ex.: junior, estágio, analyst).",
+      );
+      setSection("leads");
+      await loadDashboard();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "A pesquisa falhou. Tenta outra vez.");
+    } finally {
+      setSearching(false);
+      setBusy(false);
+    }
+  };
+
   const agentAction = async (action: "start" | "pause" | "resume") => {
     setBusy(true);
     try {
       const data = await api.agentControl({ action });
       setAgent(data.agent);
       setSearchConfig(data.searchConfig);
-      await loadActivity();
+      if (action === "start") {
+        setSection("leads");
+        await loadLeads();
+        await loadDashboard();
+      }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Falha no controlo do agente");
+      setError(e instanceof Error ? e.message : "Falha na pesquisa");
     } finally {
       setBusy(false);
     }
@@ -185,17 +220,17 @@ export default function App() {
   const title = useMemo(() => {
     switch (section) {
       case "dashboard":
-        return ["Dashboard", "Visão geral das oportunidades e da actividade do agente."];
+        return ["Encontra o teu próximo emprego", "Escreve o que procuras — nós pesquisamos por ti e mostramos vagas reais."];
       case "leads":
-        return ["Job Leads", "Todas as oportunidades descobertas, com filtros e scoring explicável."];
+        return ["Resultados", "Vagas encontradas, com score de compatibilidade com o teu perfil."];
       case "tracker":
-        return ["Candidaturas", "Kanban para acompanhar o progresso de cada oportunidade."];
+        return ["Candidaturas", "Organiza as vagas que queres seguir."];
       case "activity":
-        return ["Actividade do agente", "O que o agente está a fazer — sem chat no fluxo principal."];
+        return ["Histórico", "Registo das pesquisas feitas neste site."];
       case "profile":
-        return ["O meu perfil", "CV e preferências usados pelo matching."];
+        return ["O meu perfil", "Dados usados para calcular o match com cada vaga. Qualquer pessoa pode editar o seu perfil."];
       case "dev":
-        return ["Dev console", "Área só para debugging. O playground do Agent SDK continua disponível em separado."];
+        return ["Avançado", "Ferramentas técnicas (opcional)."];
     }
   }, [section]);
 
@@ -204,7 +239,7 @@ export default function App() {
       <aside className="sidebar">
         <div className="brand">
           <div className="brand-mark">AI Job Search</div>
-          <div className="brand-sub">Plataforma autónoma de leads</div>
+          <div className="brand-sub">Pesquisa de emprego com IA</div>
         </div>
         <nav className="nav">
           {NAV.map((item) => (
@@ -220,10 +255,12 @@ export default function App() {
         <div className="sidebar-footer">
           <div>
             <span className={`status-dot ${agent?.status || "idle"}`} />
-            Agente: {agent?.status || "idle"}
+            {searching || agent?.status === "running"
+              ? "A pesquisar vagas…"
+              : `${stats?.totalJobs ?? agent?.jobsProcessed ?? 0} vagas no site`}
           </div>
           <div className="dim" style={{ marginTop: "0.35rem" }}>
-            Processados: {agent?.jobsProcessed ?? 0}
+            Para toda a gente — não só um CV
           </div>
         </div>
       </aside>
@@ -244,91 +281,97 @@ export default function App() {
         {error ? <div className="error-banner">{error}</div> : null}
         {loading ? <div className="loading">A carregar…</div> : null}
 
-        {!loading && section === "dashboard" && stats ? (
+        {!loading && section === "dashboard" ? (
           <>
-            <div className="grid-stats">
-              <div className="stat">
-                <div className="stat-label">Vagas descobertas</div>
-                <div className="stat-value">{stats.totalJobs}</div>
+            <section className="panel search-hero">
+              <h2>O que estás a procurar?</h2>
+              <p className="dim">
+                Clica em pesquisar — o site vai buscar vagas reais e calcula o match com o perfil.
+              </p>
+              <div className="search-row">
+                <input
+                  className="search-input"
+                  placeholder="Ex.: estágio data analyst, junior AI, business intelligence"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") void runSearch();
+                  }}
+                />
+                <input
+                  className="search-location"
+                  placeholder="Localização"
+                  value={searchLocation}
+                  onChange={(e) => setSearchLocation(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") void runSearch();
+                  }}
+                />
+                <button
+                  className="btn btn-primary"
+                  disabled={busy || searching}
+                  onClick={() => void runSearch()}
+                >
+                  {searching ? "A pesquisar…" : "Pesquisar vagas"}
+                </button>
               </div>
-              <div className="stat">
-                <div className="stat-label">Novas</div>
-                <div className="stat-value">{stats.newOpportunities}</div>
-              </div>
-              <div className="stat">
-                <div className="stat-label">Match alto (≥72)</div>
-                <div className="stat-value">{stats.highMatch}</div>
-              </div>
-              <div className="stat">
-                <div className="stat-label">Em progresso</div>
-                <div className="stat-value">{stats.inProgress}</div>
-              </div>
-              <div className="stat">
-                <div className="stat-label">Score médio</div>
-                <div className="stat-value">
-                  {stats.averageMatchScore == null ? "—" : stats.averageMatchScore}
+              {searchHint ? <p className="search-hint">{searchHint}</p> : null}
+            </section>
+
+            {stats ? (
+              <div className="grid-stats" style={{ marginTop: "1.25rem" }}>
+                <div className="stat">
+                  <div className="stat-label">Vagas no site</div>
+                  <div className="stat-value">{stats.totalJobs}</div>
+                </div>
+                <div className="stat">
+                  <div className="stat-label">Novas</div>
+                  <div className="stat-value">{stats.newOpportunities}</div>
+                </div>
+                <div className="stat">
+                  <div className="stat-label">Bom match (≥72)</div>
+                  <div className="stat-value">{stats.highMatch}</div>
+                </div>
+                <div className="stat">
+                  <div className="stat-label">Em curso</div>
+                  <div className="stat-value">{stats.inProgress}</div>
                 </div>
               </div>
-              <div className="stat">
-                <div className="stat-label">Novas (7 dias)</div>
-                <div className="stat-value">{stats.newThisWeek}</div>
-              </div>
-            </div>
+            ) : null}
 
-            <div className="panel-grid">
-              <section className="panel">
-                <h2>Top Opportunities</h2>
-                {stats.topOpportunities.length === 0 ? (
-                  <div className="empty">
-                    Ainda não há leads. Inicie uma pesquisa na secção Actividade e execute o agente
-                    para descobrir vagas reais.
-                  </div>
-                ) : (
-                  stats.topOpportunities.map((item) => (
-                    <div
-                      key={item.jobId}
-                      className="top-job"
-                      onClick={() => {
-                        setSection("leads");
-                        openLead(item);
-                      }}
-                    >
-                      <div>
-                        <h3>{item.job.title}</h3>
-                        <div className="dim">
-                          {item.job.company}
-                          {item.job.location ? ` · ${item.job.location}` : ""} · {item.job.source}
-                        </div>
-                      </div>
-                      <div style={{ textAlign: "right" }}>
-                        <ScorePill item={item} />
-                        <div style={{ marginTop: "0.35rem" }}>
-                          <RecBadge value={item.breakdown?.recommendation} />
-                        </div>
+            {stats && stats.topOpportunities.length > 0 ? (
+              <section className="panel" style={{ marginTop: "1.25rem" }}>
+                <h2>Melhores matches</h2>
+                {stats.topOpportunities.map((item) => (
+                  <div
+                    key={item.jobId}
+                    className="top-job"
+                    onClick={() => {
+                      setSection("leads");
+                      openLead(item);
+                    }}
+                  >
+                    <div>
+                      <h3>{item.job.title}</h3>
+                      <div className="dim">
+                        {item.job.company}
+                        {item.job.location ? ` · ${item.job.location}` : ""} · {item.job.source}
                       </div>
                     </div>
-                  ))
-                )}
+                    <div style={{ textAlign: "right" }}>
+                      <ScorePill item={item} />
+                      <div style={{ marginTop: "0.35rem" }}>
+                        <RecBadge value={item.breakdown?.recommendation} />
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </section>
-              <section className="panel">
-                <h2>Actividade recente</h2>
-                {stats.recentActivity.length === 0 ? (
-                  <div className="empty">Sem actividade ainda.</div>
-                ) : (
-                  <ul className="activity-list">
-                    {stats.recentActivity.map((ev) => (
-                      <li key={ev.id}>
-                        <span className="dim">{formatDate(ev.at)}</span>
-                        <div>
-                          <div>{ev.message}</div>
-                          {ev.details ? <div className="dim">{ev.details}</div> : null}
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </section>
-            </div>
+            ) : (
+              <div className="empty" style={{ marginTop: "1.25rem" }}>
+                Ainda não há resultados. Usa a caixa acima — a pesquisa corre aqui no site.
+              </div>
+            )}
           </>
         ) : null}
 
@@ -404,8 +447,7 @@ export default function App() {
 
             {leads.length === 0 ? (
               <div className="empty">
-                Sem leads para estes filtros. O store só mostra vagas realmente ingeridas pelo
-                agente — sem dados inventados.
+                Ainda sem vagas. Vai a <strong>Pesquisar</strong> e clica em “Pesquisar vagas”.
               </div>
             ) : (
               <div className="table-wrap">

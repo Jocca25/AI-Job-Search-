@@ -4,11 +4,13 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { createReadStream, existsSync, statSync } from "node:fs";
 import { loadCvProfile } from "../../bot/lib/cv.js";
+import { fetchExternalJobs } from "../../bot/lib/fetch-jobs.js";
 import { scoreJobFit } from "../../bot/lib/scoring.js";
 import { JOB_SOURCES } from "../../bot/lib/sources.js";
 import {
   appendActivity,
   defaultPlatformStore,
+  findDuplicate,
   listLeadItems,
   readStoreFromDisk,
   writeStoreToDisk,
@@ -314,6 +316,121 @@ async function handleApi(req: IncomingMessage, res: ServerResponse, url: URL): P
     return;
   }
 
+  if (method === "POST" && p === "/api/search") {
+    const body = await parseJson<{ query?: string; location?: string }>(req);
+    const query = (body.query || "").trim();
+    const location = (body.location || "Portugal").trim() || "Portugal";
+    if (!query) {
+      send(res, 400, { error: "missing_query", message: "Escreve o que queres procurar." });
+      return;
+    }
+
+    let store = await readStoreFromDisk();
+    store.agent = {
+      ...store.agent,
+      status: "running",
+      lastStartedAt: new Date().toISOString(),
+      currentAction: `A pesquisar: ${query}`,
+      searchQuery: query,
+      searchLocation: location,
+      lastError: null,
+    };
+    store.searchConfig = {
+      ...store.searchConfig,
+      defaultQuery: query,
+      defaultLocation: location,
+    };
+    store = appendActivity(store, {
+      level: "info",
+      category: "search",
+      message: `Pesquisa iniciada: “${query}” em ${location}`,
+    });
+    await writeStoreToDisk(store);
+
+    try {
+      const { jobs, providers, errors } = await fetchExternalJobs(query, location);
+      const { profile } = await loadCvProfile();
+      let ingested = 0;
+      const now = new Date().toISOString();
+
+      for (const job of jobs) {
+        const dup = findDuplicate(store, job);
+        if (dup && dup.jobId !== job.id) continue;
+        const { score, score100, breakdown } = scoreJobFit(job, profile);
+        // Web search keeps results visible — users decide what to dismiss.
+        const leadStatus: LeadStatus =
+          dup && dup.leadStatus !== "new" ? dup.leadStatus : "new";
+        const existing = store.queue.items[job.id] ?? dup;
+        store.queue.items[job.id] = {
+          jobId: job.id,
+          job: existing ? { ...existing.job, ...job, id: job.id } : job,
+          score,
+          score100,
+          breakdown,
+          status: existing?.status ?? "pending",
+          leadStatus:
+            existing && existing.leadStatus !== "new" ? existing.leadStatus : leadStatus,
+          queuedAt: existing?.queuedAt ?? now,
+          discoveredAt: existing?.discoveredAt ?? now,
+          decidedAt: existing?.decidedAt,
+          appliedAt: existing?.appliedAt ?? null,
+          notes: existing?.notes ?? null,
+          preparedPayload: existing?.preparedPayload,
+          submitResult: existing?.submitResult,
+        };
+        ingested += 1;
+      }
+
+      store.agent = {
+        ...store.agent,
+        status: "idle",
+        currentAction: null,
+        lastExecutionAt: now,
+        jobsProcessed: store.agent.jobsProcessed + ingested,
+        lastError: errors.length ? errors.join("; ") : null,
+      };
+      store = appendActivity(store, {
+        level: ingested > 0 ? "success" : "warning",
+        category: "search",
+        message:
+          ingested > 0
+            ? `Encontradas ${ingested} vagas para “${query}”`
+            : `Nenhuma vaga encontrada para “${query}”. Tenta outras palavras.`,
+        details: `Fontes: ${providers.join(", ") || "nenhuma"}${errors.length ? ` · Avisos: ${errors.join("; ")}` : ""}`,
+      });
+      await writeStoreToDisk(store);
+
+      const items = listLeadItems(store.queue).filter((i) => i.leadStatus !== "dismissed");
+      send(res, 200, {
+        ok: true,
+        query,
+        location,
+        ingested,
+        providers,
+        errors,
+        count: items.length,
+        items: items.slice(0, 40),
+        agent: store.agent,
+      });
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "search_failed";
+      store.agent = {
+        ...store.agent,
+        status: "error",
+        currentAction: null,
+        lastError: message,
+      };
+      store = appendActivity(store, {
+        level: "error",
+        category: "search",
+        message: `Falha na pesquisa: ${message}`,
+      });
+      await writeStoreToDisk(store);
+      send(res, 500, { error: "search_failed", message });
+    }
+    return;
+  }
+
   if (method === "POST" && p === "/api/agent/control") {
     const body = await parseJson<{
       action: "start" | "pause" | "resume" | "set_config";
@@ -322,20 +439,77 @@ async function handleApi(req: IncomingMessage, res: ServerResponse, url: URL): P
     }>(req);
     let store = await readStoreFromDisk();
     if (body.action === "start") {
+      // Compat: "start" runs the same live search as /api/search
+      const query = store.searchConfig.defaultQuery;
+      const location = store.searchConfig.defaultLocation || "Portugal";
       store.agent = {
         ...store.agent,
         status: "running",
         lastStartedAt: new Date().toISOString(),
-        currentAction: "A aguardar execução do agente (Agent SDK)",
+        currentAction: `A pesquisar: ${query}`,
         lastError: null,
+        searchQuery: query,
+        searchLocation: location,
       };
-      store = appendActivity(store, {
-        level: "info",
-        category: "agent",
-        message:
-          body.message ||
-          "Pesquisa marcada como activa. Execute o agente (agent-sdk run/dev) para recolher vagas reais.",
-      });
+      await writeStoreToDisk(store);
+      try {
+        const { jobs, providers, errors } = await fetchExternalJobs(query, location);
+        const { profile } = await loadCvProfile();
+        let ingested = 0;
+        const now = new Date().toISOString();
+        for (const job of jobs) {
+          const dup = findDuplicate(store, job);
+          if (dup && dup.jobId !== job.id) continue;
+          const { score, score100, breakdown } = scoreJobFit(job, profile);
+          const existing = store.queue.items[job.id] ?? dup;
+          store.queue.items[job.id] = {
+            jobId: job.id,
+            job: existing ? { ...existing.job, ...job, id: job.id } : job,
+            score,
+            score100,
+            breakdown,
+            status: existing?.status ?? "pending",
+            leadStatus: existing?.leadStatus ?? "new",
+            queuedAt: existing?.queuedAt ?? now,
+            discoveredAt: existing?.discoveredAt ?? now,
+            decidedAt: existing?.decidedAt,
+            appliedAt: existing?.appliedAt ?? null,
+            notes: existing?.notes ?? null,
+            preparedPayload: existing?.preparedPayload,
+            submitResult: existing?.submitResult,
+          };
+          ingested += 1;
+        }
+        store.agent = {
+          ...store.agent,
+          status: "idle",
+          currentAction: null,
+          lastExecutionAt: now,
+          jobsProcessed: store.agent.jobsProcessed + ingested,
+          lastError: errors.length ? errors.join("; ") : null,
+        };
+        store = appendActivity(store, {
+          level: ingested > 0 ? "success" : "warning",
+          category: "search",
+          message:
+            ingested > 0
+              ? `Encontradas ${ingested} vagas para “${query}”`
+              : `Nenhuma vaga encontrada para “${query}”.`,
+          details: `Fontes: ${providers.join(", ")}`,
+        });
+        await writeStoreToDisk(store);
+        send(res, 200, {
+          agent: store.agent,
+          searchConfig: store.searchConfig,
+          ingested,
+        });
+      } catch (e) {
+        const message = e instanceof Error ? e.message : "search_failed";
+        store.agent = { ...store.agent, status: "error", lastError: message, currentAction: null };
+        await writeStoreToDisk(store);
+        send(res, 500, { error: "search_failed", message });
+      }
+      return;
     } else if (body.action === "pause") {
       store.agent = { ...store.agent, status: "paused", currentAction: null };
       store = appendActivity(store, {
