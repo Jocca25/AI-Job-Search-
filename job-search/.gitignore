@@ -5,3 +5,4 @@ node_modules
 memory
 web/dist
 web/node_modules
+data/platform-store.json
